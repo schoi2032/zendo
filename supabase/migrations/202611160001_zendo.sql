@@ -1,0 +1,51 @@
+create table public.workspaces (id uuid primary key default gen_random_uuid(), name text not null check(length(name) between 1 and 100), owner_id uuid not null references auth.users on delete cascade, personal boolean not null default false);
+create unique index one_personal_workspace on public.workspaces(owner_id) where personal;
+create table public.members (workspace_id uuid references public.workspaces on delete cascade, user_id uuid references auth.users on delete cascade, email text not null, primary key(workspace_id,user_id));
+create table public.invitations (id uuid primary key default gen_random_uuid(), workspace_id uuid not null references public.workspaces on delete cascade, email text not null check(email = lower(trim(email)) and position('@' in email)>1), unique(workspace_id,email));
+create table public.lists (id uuid primary key default gen_random_uuid(), workspace_id uuid not null references public.workspaces on delete cascade, title text not null check(length(trim(title)) between 1 and 200), unique(id,workspace_id));
+create table public.items (id uuid primary key default gen_random_uuid(), workspace_id uuid not null references public.workspaces on delete cascade, kind text not null check(kind in ('task','event','note')), title text not null check(length(trim(title)) between 1 and 500), body text not null default '', due_date date, event_time time, done boolean not null default false, list_id uuid, assignee uuid, updated_at timestamptz not null default now(), foreign key(list_id,workspace_id) references public.lists(id,workspace_id) on delete cascade, foreign key(workspace_id,assignee) references public.members(workspace_id,user_id));
+create function public.is_member(w uuid) returns boolean language sql stable security definer set search_path=public as $$ select exists(select 1 from members where workspace_id=w and user_id=auth.uid()); $$;
+create function public.is_owner(w uuid) returns boolean language sql stable security definer set search_path=public as $$ select exists(select 1 from workspaces where id=w and owner_id=auth.uid()); $$;
+create function public.bootstrap() returns void language plpgsql security definer set search_path=public as $$
+declare w uuid; e text;
+begin
+ if auth.uid() is null then raise exception 'Sign in required'; end if;
+ select lower(email) into e from auth.users where id=auth.uid() and email_confirmed_at is not null;
+ if e is null then raise exception 'Verified email required'; end if;
+ insert into workspaces(name,owner_id,personal) values('Personal workspace',auth.uid(),true) on conflict(owner_id) where personal do nothing;
+ select id into w from workspaces where owner_id=auth.uid() and personal;
+ insert into members values(w,auth.uid(),e) on conflict do nothing;
+ insert into members select i.workspace_id,auth.uid(),e from invitations i join workspaces w on w.id=i.workspace_id where i.email=e and not w.personal on conflict do nothing;
+ delete from invitations where email=e;
+end; $$;
+create function public.create_workspace(workspace_name text) returns uuid language plpgsql security definer set search_path=public as $$
+declare w uuid; e text;
+begin
+ if auth.uid() is null then raise exception 'Sign in required'; end if;
+ select lower(email) into e from auth.users where id=auth.uid();
+ insert into workspaces(name,owner_id) values(trim(workspace_name),auth.uid()) returning id into w;
+ insert into members values(w,auth.uid(),e); return w;
+end; $$;
+alter table workspaces enable row level security;
+alter table members enable row level security;
+alter table invitations enable row level security;
+alter table lists enable row level security;
+alter table items enable row level security;
+create policy workspace_read on workspaces for select to authenticated using(public.is_member(id));
+create policy member_read on members for select to authenticated using(public.is_member(workspace_id));
+create policy member_remove on members for delete to authenticated using(public.is_owner(workspace_id) and user_id<>auth.uid());
+create policy invitation_read on invitations for select to authenticated using(public.is_owner(workspace_id));
+create policy invitation_add on invitations for insert to authenticated with check(public.is_owner(workspace_id) and exists(select 1 from workspaces where id=workspace_id and not personal));
+create policy invitation_remove on invitations for delete to authenticated using(public.is_owner(workspace_id));
+create policy lists_read on lists for select to authenticated using(public.is_member(workspace_id));
+create policy lists_add on lists for insert to authenticated with check(public.is_member(workspace_id));
+create policy lists_edit on lists for update to authenticated using(public.is_member(workspace_id)) with check(public.is_member(workspace_id));
+create policy lists_remove on lists for delete to authenticated using(public.is_member(workspace_id));
+create policy items_read on items for select to authenticated using(public.is_member(workspace_id));
+create policy items_add on items for insert to authenticated with check(public.is_member(workspace_id));
+create policy items_edit on items for update to authenticated using(public.is_member(workspace_id)) with check(public.is_member(workspace_id));
+create policy items_remove on items for delete to authenticated using(public.is_member(workspace_id));
+revoke all on function public.bootstrap() from public;
+revoke all on function public.create_workspace(text) from public;
+grant execute on function public.bootstrap(), public.create_workspace(text) to authenticated;
+alter publication supabase_realtime add table public.items, public.lists, public.members, public.invitations, public.workspaces;
