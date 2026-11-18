@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>com.zendo.commandcenter</string>
+<key>CFBundleName</key><string>Zendo</string>
+<key>CFBundleDisplayName</key><string>Zendo</string>
+<key>CFBundleExecutable</key><string>Zendo</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleShortVersionString</key><string>1.1.0</string>
+<key>CFBundleVersion</key><string>2</string>
+<key>LSMinimumSystemVersion</key><string>14.0</string>
+<key>NSHighResolutionCapable</key><true/>
+<key>NSPrincipalClass</key><string>NSApplication</string>
+<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>Zendo sign-in</string><key>CFBundleURLSchemes</key><array><string>zendo</string></array></dict></array>
+<key>ZendoWebURL</key><string>https://schoi2032.github.io/zendo/</string>
+<key>ZendoAuthOrigin</key><string>https://bvmhulpfpwqdpfopucpg.supabase.co</string>
+</dict></plist>
