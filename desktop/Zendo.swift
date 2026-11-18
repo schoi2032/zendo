@@ -249,6 +249,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard let output = snapshotPath else { return }
         snapshotPath = nil
+        // Local snapshot QA also exercises the real WKWebView -> native reply bridge.
+        if baseURL.scheme == "http" {
+            webView.evaluateJavaScript("window.webkit.messageHandlers.zendo.postMessage({action:'getState'}).then(s => typeof s.desktop === 'boolean' && Array.isArray(s.shortcuts))") { value, error in
+                if error != nil || value as? Bool != true { fputs("Desktop bridge check failed\n", stderr) }
+                else { print("Desktop bridge check passed") }
+            }
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
             self.webView.takeSnapshot(with: nil) { image, error in
                 guard let image = image, let tiff = image.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff), let png = bitmap.representation(using: .png, properties: [:]) else { fputs("Snapshot failed\n", stderr); NSApp.terminate(nil); return }
