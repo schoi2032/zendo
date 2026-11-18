@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {ArrowUpRight,CalendarDays,Check,ChevronLeft,ChevronRight,FileText,Link2,ListTodo,NotebookPen,Pencil,Pin,Plus,Search,Trash2,X} from 'lucide-react';
+import {useToday} from '@/lib/use-today';
 import {supabase} from '@/lib/supabase';
 import {DocumentImport} from './documents';
 import type {Item} from '@/lib/workspace-types';
@@ -10,7 +11,7 @@ type Props={workspaceId:string;workspaceName:string;personal:boolean;items:Item[
 const kindIcon={task:ListTodo,note:NotebookPen,document:FileText,event:CalendarDays,link:Link2};
 const linkIcons=['🔗','💼','📁','📚','✉️','💻','🎨','⭐','🎯','📝'];
 export default function CommandCenter({workspaceId,workspaceName,personal,items,onOpen,onPatch,onRefresh,onNotice}:Props){
-  const today=localDateKey(new Date());
+  const today=useToday();
   const data=centerItems(items,today);
   const [month,setMonth]=useState(new Date());
   const [library,setLibrary]=useState<'tasks'|'documents'|null>(null),[librarySearch,setLibrarySearch]=useState(''),[selectedDate,setSelectedDate]=useState(localDateKey(new Date()));

@@ -22,6 +22,7 @@ export default function App(){
  const space=spaces.find(s=>s.id===wid), owner=space?.owner_id===user?.id;
  const displayName=user?.user_metadata.display_name?.trim()||user?.user_metadata.full_name||'Your account';
  const fail=(message:string)=>setNotice(`Something went wrong: ${message}`);
+ useEffect(()=>{document.documentElement.dataset.zendoAuth=ready?(user?'signed-in':'signed-out'):'loading';},[ready,user?.id]);
  useEffect(()=>{if(!db){setReady(true);return;} db.auth.getSession().then(({data,error})=>{if(error)fail(error.message);setUser(data.session?.user??null);setReady(true);});const {data}=db.auth.onAuthStateChange((_event,session)=>setUser(session?.user??null));return()=>data.subscription.unsubscribe();},[]);
  async function loadSpaces(){if(!db)return;const {data,error}=await db.from('workspaces').select('*').order('personal',{ascending:false});if(error)fail(error.message);else{setSpaces(data??[]);setWid(old=>data.some(s=>s.id===old)?old:data[0]?.id??'');}}
  useEffect(()=>{if(!user||!db)return;db.rpc('bootstrap').then(({error})=>{if(error)fail(error.message);else void loadSpaces();});},[user?.id]);
