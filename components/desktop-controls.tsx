@@ -1,12 +1,11 @@
 'use client';
 import {useEffect,useState} from 'react';
-import {Download,Monitor,Plus,Folder,FileText,AppWindow,Trash2} from 'lucide-react';
+import {Monitor,Plus,Folder,FileText,AppWindow,Trash2} from 'lucide-react';
 import {desktopRequest,hasDesktopBridge,type DesktopState} from '@/lib/desktop';
-import {basePath} from '@/lib/paths';
 export default function DesktopControls({onNotice}:{onNotice:(text:string)=>void}){
  const [state,setState]=useState<DesktopState|null>(null),[busy,setBusy]=useState(false);
  useEffect(()=>{if(!hasDesktopBridge())return;const refresh=()=>{desktopRequest().then(setState).catch(e=>onNotice(e.message));};refresh();window.addEventListener('focus',refresh);return()=>window.removeEventListener('focus',refresh);},[]);
  async function act(action:'setDesktop'|'setLogin'|'addShortcut'|'openShortcut'|'removeShortcut',value:unknown){setBusy(true);try{setState(await desktopRequest(action,value));}catch(e){onNotice((e as Error).message);}finally{setBusy(false);}}
- if(!state)return <section className="panel desktop-promo"><span className="desktop-promo-icon"><Monitor size={23}/></span><div><h3>Your workspace, on your desktop.</h3><p>Get the Mac app for a clickable desktop and shortcuts to your apps, files, and folders.</p></div><a className="secondary" href={`${basePath}/download/`}><Download size={15}/>Get Zendo for Mac</a></section>;
+ if(!state)return null;
  return <section className="panel desktop-tools"><div className="panel-heading"><h2><Monitor size={18}/>On this Mac</h2><button className={state.desktop?'primary':'secondary'} disabled={busy} onClick={()=>void act('setDesktop',!state.desktop)}>{state.desktop?'Leave Desktop Mode':'Use as desktop'}</button></div><div className="local-shortcuts">{state.shortcuts.map(shortcut=>{const Icon=shortcut.kind==='app'?AppWindow:shortcut.kind==='folder'?Folder:FileText;return <div className="local-shortcut" key={shortcut.id}><button disabled={busy} onClick={()=>void act('openShortcut',shortcut.id)}><Icon size={20}/><span>{shortcut.name}</span></button><button className="icon-button" disabled={busy} aria-label={`Remove ${shortcut.name} shortcut`} onClick={()=>void act('removeShortcut',shortcut.id)}><Trash2 size={13}/></button></div>})}<button className="secondary" disabled={busy} onClick={()=>void act('addShortcut','app')}><Plus size={14}/>App</button><button className="secondary" disabled={busy} onClick={()=>void act('addShortcut','file')}><Plus size={14}/>File</button><button className="secondary" disabled={busy} onClick={()=>void act('addShortcut','folder')}><Plus size={14}/>Folder</button></div><div className="desktop-tools-footer"><p>These shortcuts stay on this Mac. Shared Command Centers never share your local files.</p><label><input type="checkbox" checked={state.login} disabled={busy} onChange={e=>void act('setLogin',e.target.checked)}/>Open at login</label></div></section>;
 }
