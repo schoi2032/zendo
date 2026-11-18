@@ -251,9 +251,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         snapshotPath = nil
         // Local snapshot QA also exercises the real WKWebView -> native reply bridge.
         if baseURL.scheme == "http" {
-            webView.evaluateJavaScript("window.webkit.messageHandlers.zendo.postMessage({action:'getState'}).then(s => typeof s.desktop === 'boolean' && Array.isArray(s.shortcuts))") { value, error in
-                if error != nil || value as? Bool != true { fputs("Desktop bridge check failed\n", stderr) }
-                else { print("Desktop bridge check passed") }
+            webView.callAsyncJavaScript("const s = await window.webkit.messageHandlers.zendo.postMessage({action:'getState'}); return typeof s.desktop === 'boolean' && Array.isArray(s.shortcuts);", arguments: [:], in: nil, in: .page) { result in
+                switch result {
+                case .success(let value): print(value as? Bool == true ? "Desktop bridge check passed" : "Desktop bridge returned an unexpected result")
+                case .failure(let error): fputs("Desktop bridge check failed: \(error.localizedDescription)\n", stderr)
+                }
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
